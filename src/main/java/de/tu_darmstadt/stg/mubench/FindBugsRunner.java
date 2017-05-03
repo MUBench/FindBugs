@@ -40,7 +40,7 @@ public class FindBugsRunner extends MuBenchRunner {
 	private void runFindBugs(DetectorArgs args, DetectorOutput output)
 			throws FileNotFoundException, IOException, InterruptedException {
 		FindBugs2 findbugs = new FindBugs2();
-		Project targetProject = buildProject(args.getTargetPath());
+		Project targetProject = buildProject(args.getTargetPath(), args.getDependencyClassPath());
 		BugReporter bugReporter = new BugCollectionBugReporter(targetProject);
 		bugReporter.setPriorityThreshold(Priorities.LOW_PRIORITY);
 		findbugs.setUserPreferences(UserPreferences.createDefaultUserPreferences());
@@ -50,12 +50,15 @@ public class FindBugsRunner extends MuBenchRunner {
 		findbugs.execute();
 		for (BugInstance bug : findbugs.getBugReporter().getBugCollection()) {
 			MethodAnnotation primaryMethod = bug.getPrimaryMethod();
-			DetectorFinding finding = output.add(primaryMethod.getSourceFileName(), primaryMethod.getMethodName());
+			if (primaryMethod == null) {
+				continue;
+			}
+			File sourceFile = new File(bug.getPrimarySourceLineAnnotation().getSourcePath());
+			DetectorFinding finding = output.add(sourceFile.getAbsolutePath(), primaryMethod.getMethodName());
 			finding.put("rank", String.valueOf(bug.getBugRank()));
 			finding.put("desc", bug.getMessage());
 			finding.put("type", bug.getType());
 			finding.put("startline", String.valueOf(bug.getPrimarySourceLineAnnotation().getStartLine()));
-			finding.put("endline", String.valueOf(bug.getPrimarySourceLineAnnotation().getEndLine()));
 		}
 	}
 
@@ -67,12 +70,15 @@ public class FindBugsRunner extends MuBenchRunner {
 		return getFiles(dir, ".class");
 	}
 
-	private Project buildProject(CodePath path) {
+	private Project buildProject(CodePath path, String[] classPath) {
 		Project project = new Project();
 		List<File> files = findClassFiles(path.classPath);
 		files.addAll(findSourceFiles(path.srcPath));
 		for (File file : files) {
 			project.addFile(file.getAbsolutePath());
+		}
+		for (String dependency : classPath) {
+			project.addAuxClasspathEntry(dependency);
 		}
 		return project;
 	}
@@ -80,6 +86,7 @@ public class FindBugsRunner extends MuBenchRunner {
 	private List<File> getFiles(String dir, String suffix) {
 		File directory = new File(dir);
 		List<File> files = new ArrayList<>();
+
 		// get all the files from a directory
 		File[] fList = directory.listFiles();
 		for (File file : fList) {
