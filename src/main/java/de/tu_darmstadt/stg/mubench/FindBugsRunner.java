@@ -48,7 +48,12 @@ public class FindBugsRunner extends MuBenchRunner {
 		findbugs.setBugReporter(bugReporter);
 		findbugs.setDetectorFactoryCollection(DetectorFactoryCollection.instance());
 		findbugs.execute();
-		for (BugInstance bug : findbugs.getBugReporter().getBugCollection()) {
+		ArrayList<BugInstance> bugs = new ArrayList<>();
+		bugs.addAll(findbugs.getBugReporter().getBugCollection().getCollection());
+		bugs.sort((BugInstance a, BugInstance b) -> {
+			return a.getBugRank() - b.getBugRank();
+		});
+		for (BugInstance bug : bugs) {
 			MethodAnnotation primaryMethod = bug.getPrimaryMethod();
 			if (primaryMethod == null) {
 				continue;
