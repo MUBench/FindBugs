@@ -15,11 +15,14 @@ import edu.umd.cs.findbugs.BugCollectionBugReporter;
 import edu.umd.cs.findbugs.BugInstance;
 import edu.umd.cs.findbugs.BugReporter;
 import edu.umd.cs.findbugs.DetectorFactoryCollection;
+import edu.umd.cs.findbugs.FilterBugReporter;
 import edu.umd.cs.findbugs.FindBugs2;
 import edu.umd.cs.findbugs.MethodAnnotation;
 import edu.umd.cs.findbugs.Priorities;
 import edu.umd.cs.findbugs.Project;
 import edu.umd.cs.findbugs.config.UserPreferences;
+import edu.umd.cs.findbugs.filter.Filter;
+import edu.umd.cs.findbugs.filter.Matcher;
 
 public class FindBugsRunner extends MuBenchRunner {
 
@@ -41,13 +44,17 @@ public class FindBugsRunner extends MuBenchRunner {
 			throws FileNotFoundException, IOException, InterruptedException {
 		FindBugs2 findbugs = new FindBugs2();
 		Project targetProject = buildProject(args.getTargetPath(), args.getDependencyClassPath());
-		BugReporter bugReporter = new BugCollectionBugReporter(targetProject);
+		Matcher bugMatcher = new Filter(getClass().getResourceAsStream("/configuration.xml"));
+
+		BugReporter bugReporter = new FilterBugReporter(new BugCollectionBugReporter(targetProject), bugMatcher, true);
 		bugReporter.setPriorityThreshold(Priorities.LOW_PRIORITY);
+
 		findbugs.setUserPreferences(UserPreferences.createDefaultUserPreferences());
 		findbugs.setProject(targetProject);
 		findbugs.setBugReporter(bugReporter);
 		findbugs.setDetectorFactoryCollection(DetectorFactoryCollection.instance());
 		findbugs.execute();
+
 		ArrayList<BugInstance> bugs = new ArrayList<>();
 		bugs.addAll(findbugs.getBugReporter().getBugCollection().getCollection());
 		bugs.sort((BugInstance a, BugInstance b) -> {
