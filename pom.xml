@@ -16,6 +16,14 @@
 		<version>0.0.9-SNAPSHOT</version>
 	</dependency>
   </dependencies>
+
+	<repositories>
+		<repository>
+			<id>stg-mubench</id>
+			<name>MuBench</name>
+			<url>http://www.st.informatik.tu-darmstadt.de/artifacts/mubench/mvn/</url>
+		</repository>
+	</repositories>
   
   <build>
 		<sourceDirectory>src</sourceDirectory>
