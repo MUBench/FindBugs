@@ -42,7 +42,13 @@ public class FindBugsRunner extends MuBenchRunner {
 
 	private void runFindBugs(DetectorArgs args, DetectorOutput output)
 			throws FileNotFoundException, IOException, InterruptedException {
+		MuBenchMethodFormatConverter muBenchConverter = new MuBenchMethodFormatConverter();
 		FindBugs2 findbugs = new FindBugs2();
+		CodePath cp = args.getTargetPath();
+		if (cp != null){
+			System.out.println("cp.srcPath : " +((cp.srcPath != null) ? cp.srcPath : " empty"));
+			System.out.println("cp.classPath : " +((cp.classPath != null) ? cp.classPath : " empty"));
+		}
 		Project targetProject = buildProject(args.getTargetPath(), args.getDependencyClassPath());
 		Matcher bugMatcher = new Filter(getClass().getResourceAsStream("/configuration.xml"));
 
@@ -65,8 +71,28 @@ public class FindBugsRunner extends MuBenchRunner {
 			if (primaryMethod == null) {
 				continue;
 			}
-			File sourceFile = new File(bug.getPrimarySourceLineAnnotation().getSourcePath());
-			DetectorFinding finding = output.add(sourceFile.getAbsolutePath(), primaryMethod.getMethodName());
+			// File sourceFile = new File(bug.getPrimarySourceLineAnnotation().getSourcePath());
+			String methodName = primaryMethod.getMethodName();
+			if (methodName.contains ("<clinit>")){
+				methodName = "<init>";
+			}
+			String methodSig = primaryMethod.getMethodSignature();
+			System.out.println("method sig : " +methodSig);
+			DetectorFinding finding = null;
+			String extractedType = muBenchConverter.convert(methodSig);
+			String srcPath = bug.getPrimarySourceLineAnnotation().getSourcePath();
+			System.out.println("Old source path: " +srcPath);
+			String className = bug.getPrimaryClass().getClassName();
+			srcPath = className.replace('.', '/');
+			StringBuilder sb = new StringBuilder(srcPath);
+			sb.append(".java");
+			System.out.println("New src path : " +sb.toString());
+			if(extractedType != null){
+				System.out.println("extractedType is : " +extractedType);
+				finding = output.add(sb.toString(), methodName + "(" +extractedType + ")");
+			}else{
+				finding = output.add(srcPath, methodSig);
+			}
 			finding.put("rank", String.valueOf(bug.getBugRank()));
 			finding.put("desc", bug.getMessage());
 			finding.put("type", bug.getType());
