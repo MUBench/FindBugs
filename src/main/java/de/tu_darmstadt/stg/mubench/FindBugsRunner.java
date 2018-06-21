@@ -1,14 +1,13 @@
 package de.tu_darmstadt.stg.mubench;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.*;
 import java.security.CodeSource;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -28,11 +27,9 @@ public class FindBugsRunner {
 				.withDetectOnlyStrategy(FindBugsRunner::runFindBugs)
 				.withMineAndDetectStrategy(FindBugsRunner::runFindBugs)
 				.run(args);
-        NullCipher cipher = new NullCipher();
-        cipher.doFinal(new byte[]{1,2,3,4});
     }
 
-	private static DetectorOutput runFindBugs(DetectorArgs args, DetectorOutput.Builder output) throws IOException, InterruptedException {
+	private static DetectorOutput runFindBugs(DetectorArgs args, DetectorOutput.Builder output) throws IOException, InterruptedException, PluginException {
         Project targetProject = buildTargetProject(args);
         BugReporter bugReporter = createBugReporter(targetProject);
         List<BugInstance> bugs = runFindbugs(targetProject, bugReporter);
@@ -92,7 +89,7 @@ public class FindBugsRunner {
         return bugReporter;
     }
 
-    private static List<BugInstance> runFindbugs(Project targetProject, BugReporter bugReporter) throws IOException, InterruptedException {
+    private static List<BugInstance> runFindbugs(Project targetProject, BugReporter bugReporter) throws IOException, InterruptedException, PluginException {
         loadFindbugsPlugins();
 
         FindBugs2 findbugs = new FindBugs2();
@@ -109,30 +106,36 @@ public class FindBugsRunner {
         }
     }
 
-    private static void loadFindbugsPlugins() throws IOException {
-        try {
-            // We shop Findbugs plugins as jar files within the /plugins directory in the runner jar. Unfortunately,
-            // we cannot directly load them from within the runner jar, since Java cannot open URL connections to files
-            // within a jar within a jar. Therefore, we extract the plugin jars into a temporary directory and load them
-            // from there.
-            Path tmpDirectory = Files.createTempDirectory("mubench-findbugs-");
-            CodeSource src = FindBugsRunner.class.getProtectionDomain().getCodeSource();
-            if (src != null) {
-                Path jar = Paths.get(src.getLocation().getPath());
-                FileSystem jarFS = FileSystems.newFileSystem(jar, null);
-                Path pluginsPath = jarFS.getPath("plugins");
-                try (DirectoryStream<Path> plugins = Files.newDirectoryStream(pluginsPath)) {
-                    for (Path plugin : plugins) {
-                        String pluginName = plugin.getFileName().toString();
-                        Path pluginTargetPath = tmpDirectory.resolve(pluginName);
-                        Files.copy(plugin, pluginTargetPath);
-                        Plugin.addCustomPlugin(pluginTargetPath.toUri());
-                    }
-                }
+    private static void loadFindbugsPlugins() throws IOException, PluginException {
+        // We shop Findbugs plugins as jar files within the /plugins directory in the runner jar. Unfortunately,
+        // we cannot directly load them from within the runner jar, since Java cannot open URL connections to files
+        // within a jar within a jar. Therefore, we extract the plugin jars into a temporary directory and load them
+        // from there.
+        Path pluginsPath = getPluginsPath();
+        Path tmpDirectory = Files.createTempDirectory("mubench-findbugs-");
+        try (DirectoryStream<Path> plugins = Files.newDirectoryStream(pluginsPath)) {
+            for (Path plugin : plugins) {
+                String pluginName = plugin.getFileName().toString();
+                Path pluginTargetPath = tmpDirectory.resolve(pluginName);
+                Files.copy(plugin, pluginTargetPath);
+                Plugin.addCustomPlugin(pluginTargetPath.toUri());
             }
-        } catch (PluginException e) {
-            e.printStackTrace();
         }
+    }
+
+    private static Path getPluginsPath() throws IOException {
+        CodeSource src = FindBugsRunner.class.getProtectionDomain().getCodeSource();
+        if (src != null) {
+            URL location = src.getLocation();
+            if (location.getFile().endsWith(".jar")) {
+                Path jar = Paths.get(location.getPath());
+                FileSystem jarFS = FileSystems.newFileSystem(jar, null);
+                return jarFS.getPath("plugins");
+            } else {
+                return Paths.get(location.getPath().replaceAll("%20", " "), "plugins");
+            }
+        }
+        throw new FileNotFoundException("Could not determine plugins path.");
     }
 
     private static List<DetectorFinding> convertToFindings(List<BugInstance> bugs) {
