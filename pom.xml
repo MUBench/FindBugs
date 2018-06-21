@@ -13,7 +13,7 @@
   	<dependency>
 		<groupId>de.tu-darmstadt.stg</groupId>
 		<artifactId>mubench.cli</artifactId>
-		<version>0.0.9-SNAPSHOT</version>
+		<version>0.0.13</version>
 	</dependency>
 	<dependency>
 		<groupId>junit</groupId>
@@ -21,6 +21,14 @@
 		<version>4.8.2</version>			
 			<scope>test</scope>
 	</dependency>
+
+      <!-- Findbugs plugins need to be declared as `provided` dependencies for separate inclusion (see <build>). -->
+      <dependency>
+          <groupId>com.h3xstream.findsecbugs</groupId>
+          <artifactId>findsecbugs-plugin</artifactId>
+          <version>1.7.1</version>
+          <scope>provided</scope>
+      </dependency>
   </dependencies>
 
 	<repositories>
@@ -41,6 +49,31 @@
 					<target>1.8</target>
 				</configuration>
 			</plugin>
+
+            <!-- Copy Findbugs plugins into the `/plugins` directory. They will be extracted on the fly and loaded
+             when running the detector. This assumes that plugin dependencies are declared as `provided`
+             dependencies. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>copy-dependencies</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${project.build.directory}/classes/plugins</outputDirectory>
+							<overWriteReleases>false</overWriteReleases>
+							<overWriteSnapshots>false</overWriteSnapshots>
+							<overWriteIfNewer>true</overWriteIfNewer>
+							<includeScope>provided</includeScope>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
 			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
 				<executions>
