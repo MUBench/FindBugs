@@ -18,8 +18,6 @@ import edu.umd.cs.findbugs.config.UserPreferences;
 import edu.umd.cs.findbugs.filter.Filter;
 import edu.umd.cs.findbugs.filter.Matcher;
 
-import javax.crypto.NullCipher;
-
 public class FindBugsRunner {
 
 	public static void main(String[] args) throws Exception {
