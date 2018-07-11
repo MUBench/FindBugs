@@ -158,10 +158,10 @@ public class FindBugsRunner {
             }else{
                 finding = new DetectorFinding(srcPath, methodSig);
             }
-            finding.put("rank", String.valueOf(bug.getBugRank()));
+            finding.put("rank", bug.getBugRank());
             finding.put("desc", bug.getMessage());
             finding.put("type", bug.getType());
-            finding.put("startline", String.valueOf(bug.getPrimarySourceLineAnnotation().getStartLine()));
+            finding.put("startline", bug.getPrimarySourceLineAnnotation().getStartLine());
 
             findings.add(finding);
         }
